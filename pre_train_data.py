@@ -1,22 +1,29 @@
+
 import pandas as pd
 
 #colname = ["duration","protocol_type","service","flag","src_bytes","dst_bytes","count","serror_rate","rerror_rate","diff_srv_rate","dst_host_count","dst_host_srv_count","dst_host_same_srv_rate","dst_host_diff_srv_rate","dst_host_srv_serror_rate","label"]
+# get desired subset
 
-test_set=pd.read_csv('~/dataset/dos_kdd99_10percent.csv')
+#dset = pd.read_csv('/home/phong/study/capstone_project/dataset/kddcup.data_10_percent_corrected',header=None,names=colname)
+#colname = ["duration","protocol_type","service","flag","src_bytes","dst_bytes","count","label"]
+#dset = dset[colname]
+#dset.to_csv('dataset/kdd_10percent_corrected.csv')
 
+test_set=pd.read_csv('dataset/kdd_dos_data.csv')
+#test_set=test_set[colname]
 #get dos's attribute
 
 #train_set=train_set[colname]
 
 #reduce output to 'normal' and 'attack'
 test_labels=test_set['label'].copy()
-test_labels[test_labels!='normal']='attack'
+test_labels[test_labels!='normal.']='attack'
 
 #~firstly, we are going to transform all categorical attibute to numeric attribute~
 
 # preprocessing nomial features
-import numpy as np
-from sklearn.preprocessing import LabelEncoder,OneHotEncoder
+#import numpy as np
+from sklearn.preprocessing import LabelEncoder
 le = LabelEncoder()
 
 #preprocess 'service' attribute (having large number of unique value)
@@ -27,12 +34,31 @@ for element in value_list.classes_:
     Np = test_set[(test_set['service']==element) & (test_set['label']!='normal')].shape[0]#number of instance equal to 'element' in 'service''s column and have label of 'attack'
     A=Np/N
     test_set.loc[test_set['service']==element,'service']=A
-    
+#transform 'protocol_type' attribute
+import numpy as np
+
+test_set['tcp_proto'] = test_set['protocol_type']
+test_set.loc[test_set['tcp_proto']!='tcp','tcp_proto']=0
+test_set.loc[test_set['tcp_proto']=='tcp','tcp_proto']=1
+
+test_set['udp_proto'] = test_set['protocol_type']
+test_set.loc[test_set['udp_proto']!='udp','udp_proto']=0
+test_set.loc[test_set['udp_proto']=='udp','udp_proto']=1
+
+test_set['icmp_proto'] = test_set['protocol_type']
+test_set.loc[test_set['icmp_proto']!='icmp','icmp_proto']=0
+test_set.loc[test_set['icmp_proto']=='icmp','icmp_proto']=1
+
+#transform 'flag' attribute
+flags = np.array(['S0','S1','SF','REJ','S2','S3','RSTO','RSTR','RSTOS0','RSTRH','SH','SHR','OTH'])
+for i in flags:
+    colname = 'flag_{!s}'.format(i)
+    test_set[colname] = test_set['flag']
+    test_set.loc[test_set[colname]!=i,colname]=0
+    test_set.loc[test_set[colname]==i,colname]=1
+
 #preprocessing 'flag' and 'protocol_type' attribute (having few number of unique value)
-a = pd.get_dummies(test_set[['flag','protocol_type']])
-test_set = pd.concat([test_set,a],axis=1)
-test_set=test_set.drop(['Unnamed: 0','flag','protocol_type'],axis=1)
-#train_set['flag']=le.fit_transform(train_set['flag'])
+test_set=test_set.drop(['Unnamed: 0','protocol_type','flag'],axis=1)
 
 #~/~
 
@@ -47,16 +73,8 @@ for each_column in test_set:
 
 #save to file
 full_test_set = pd.concat([test_set,test_labels],axis=1)
-full_test_set.to_csv('~/dataset/preprocessed_test_dos_kdd99.csv')    
+full_test_set.to_csv('dataset/preprocessed_kdd99_dos.csv')    
 
 #transform label to numeric representation
 test_labels = le.fit_transform(test_labels)
-
-#train model
-#from sklearn.neighbors import KNeighborsClassifier
-#clf=KNeighborsClassifier(n_neighbors=5,algorithm='ball_tree',leaf_size=500)
-#from time import time
-#t0=time()
-#clf.fit(features,labels)
-#tt=time()-t0
-#print('classifier trained in {} seconds'.format(round(tt,3)))
+#print 'done'
